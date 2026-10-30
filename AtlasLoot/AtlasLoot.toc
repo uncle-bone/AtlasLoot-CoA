@@ -1,15 +1,16 @@
 ## Interface: 30300
 ## Title: AtlasLoot-CoA
 ## Notes: Shows the possible loot from the bosses
-## Author: Uncle Bone
-## X-Original-Author: Anch - Area 52
-## Version: 8.1.1-CoA
+## Author: Anch - Area 52
+## Version: 8.1.6-CoA
 ## X-Credits: Original: Hegarol, Ascension: Skray,Szyler,Anch,Rvng and others.
 ## Dependencies: AtlasLoot_Cache
 ## X-Category: Map
 ## X-License: GPL v2
 ## X-Github-Repository: https://github.com/downingwow/AtlasLoot-CoA
 ## X-Maintainer: Uncle Bone
+## X-Discord: https://discord.gg/uYCE2X2FgA
+## X-Donate: https://patreon.com/anch649
 ## X-Embeds: Ace3, DewdropLib, LibBabble-Boss-3.0, LibBabble-Faction-3.0, LibBabble-Inventory-3.0, LibBabble-Zone-3.0
 ## Title-deDE: AtlasLoot Enhanced
 ## Notes-deDE: Zeigt mögliche Beute von Bossen
@@ -30,5 +31,3 @@
 ## SavedVariablesPerCharacter: AtlasLootCharDB
 
 embeds.xml
-## X-Website: https://github.com/downingwow/AtlasLoot-CoA
-## X-Contact: https://github.com/downingwow

@@ -1,0 +1,7 @@
+AtlasLoot-CoA 8.1.5 UI fixes
+- Hide old boss list when entering BiS and restore when leaving.
+- Save Phase/Class/Spec/Slot selection in AtlasLootDB profile.
+- Display 30 ranked candidates across two columns (15 per column).
+- Keep both AtlasLoot and AtlasLoot_Cache.
+- Requires in-game validation.
+Maintainer: Uncle Bone

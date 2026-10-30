@@ -114,6 +114,7 @@ function AtlasLoot:InitializeUI()
             if tab.onLeave then tab.onLeave(...) end
         end)
         newTab.tabButton:SetScript("OnClick", function(button, buttonClick)
+            if tab.name ~= "BiS" then self:LeaveCoABiS() end
             newTab.onClick(button, buttonClick)
             self:SetUITab()
         end)

@@ -19,7 +19,9 @@ function AtlasLoot:InitializeUIFunctions()
         --Definition of where I want the loot table to be shown
         --Set the item table to the loot table
         --Show the last displayed loot table
+        self:LeaveCoABiS()
         self.ui.tabs.currentTab = "Loot"
+        self.ui.tabs.Loot:Show()
         -- First launch or an unavailable expansion may not have a saved boss.
         local lastBoss = self.db and self.db.profile and self.db.profile.LastBoss
         local selection = type(lastBoss) == "table" and lastBoss[self.currentExpansion]
@@ -258,7 +260,16 @@ function AtlasLoot:InitializeUIFunctions()
     end
 
     function self:SetUITab(showTab)
+        if showTab and showTab ~= "BiS" then self:LeaveCoABiS() end
         if showTab then self.ui.tabs.currentTab = showTab end
+        -- Explicit visibility is required; checked tab buttons do not show frames.
+        if self.ui.tabs.BiS then
+            if self.ui.tabs.currentTab == "BiS" then
+                self.ui.tabs.BiS:Show()
+            else
+                self.ui.tabs.BiS:Hide()
+            end
+        end
         for _, tab in pairs(self.ui.tabs) do
             if type(tab) ~= "string" then
                 if tab.name == self.ui.tabs.currentTab then

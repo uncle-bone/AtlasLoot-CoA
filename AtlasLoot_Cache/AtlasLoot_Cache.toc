@@ -1,4 +1,4 @@
-## Interface: 30300
+﻿## Interface: 30300
 ## Title: AtlasLoot_Cache
 ## Title-deDE: AtlasLoot |cFF0099FF[BC-Instanzen]|r
 ## Title-zhCN: AtlasLoot |cFF0099FF[燃烧的远征]|r
@@ -8,11 +8,9 @@
 ## Version: v6.2.0
 ## X-Category: Map
 ## X-License: GPL v2
-## X-Website: https://github.com/downingwow/AtlasLoot-CoA
+## X-Website: https://discord.gg/uYCE2X2FgA
 ## SavedVariables: AtlasLootItemCache, AtlasLootOtherIds, AtlasLoot_Data_Cache
 
 AtlasLootCache.lua
 ItemIDsDatabaseFixes.lua
 CacheFunctions.lua
-## X-Maintainer: Uncle Bone
-## X-Contact: https://github.com/downingwow
