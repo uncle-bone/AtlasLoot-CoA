@@ -1,0 +1,341 @@
+local AtlasLoot = LibStub("AceAddon-3.0"):GetAddon("AtlasLoot")
+
+local playerName = UnitName("player")
+local playerFaction = UnitFactionGroup("player")
+
+--Set Tooltip for extra crafting data
+local function setCraftingTooltip(self, data)
+    local craftingData = data.craftingData
+    if not craftingData then return end
+    --extra information on where to find the recipe
+    if (self.selectedProfile.recipeExtraInfoSwitch and IsControlKeyDown()) or (not self.selectedProfile.recipeExtraInfoSwitch) then
+        GameTooltip:AddLine(" ")
+        for _,v in pairs(craftingData) do
+            local line1 = v[1]
+            local line2 = v[2]
+            if v.fac  then line1 = v.fac[1]..line1 end
+            if v.cords and v.cords[1] ~= 0 and v.cords[2] ~= 0 then
+                if line2 then
+                    line2 = self.Colors.WHITE..line2..self.Colors.WHITE.." ("..self.Colors.GOLD..v.cords[1]..self.Colors.WHITE..", "..self.Colors.GOLD..v.cords[2]..self.Colors.WHITE..")"
+                else
+                    line2 = self.Colors.WHITE.." ("..self.Colors.GOLD..v.cords[1]..self.Colors.WHITE..", "..self.Colors.GOLD..v.cords[2]..self.Colors.WHITE..")"
+                end
+            end
+            GameTooltip:AddDoubleLine(line1, line2)
+        end
+    else
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(self.Colors.WHITE.."Hold CTRL for source")
+    end
+end
+
+--Set quest tooltip info
+local function setQuestTooltip(self, data)
+    if not data.quest then return end
+    for _,v in ipairs(data.quest) do
+        local quest = self.data.crafting["QuestList"][v]
+        local text = data.quest.text or ""
+        GameTooltip:AddDoubleLine(quest[1], self.Colors.WHITE..text)
+        GameTooltip:AddDoubleLine(quest[5][1]..quest[2], self.Colors.WHITE.." ("..self.Colors.GOLD..quest[3]..self.Colors.WHITE..", "..self.Colors.GOLD..quest[4]..self.Colors.WHITE..")")
+    end
+end
+
+--Set droprate tooltip
+local function setDroprateTooltip(self, data)
+    if not data.droprate then return end
+    if type(data.droprate) == "table" then
+        if not data.droprate[self.ItemindexID] then return end
+        local dropIndex = self.ItemindexID
+        if self.ItemindexID == 6 then
+            dropIndex = 4
+        elseif self.ItemindexID == 5 then
+            dropIndex = 5
+        end
+        if data.droprate[dropIndex] then
+            GameTooltip:AddLine("Drop Rate: "..data.droprate[dropIndex], 1, 1, 0)
+        end
+    else
+        GameTooltip:AddLine("Drop Rate: "..data.droprate, 1, 1, 0)
+    end
+end
+
+--Set extra info tooltip
+local function setExtraTooltip(self,data)
+    if not data.extraInfo then return end
+    GameTooltip:AddLine("Extra Info: "..data.extraInfo, 1, 1, 0)
+end
+--------------------------------------------------------------------------------
+-- Item OnEnter
+-- Called when a loot item is moused over
+--------------------------------------------------------------------------------
+function AtlasLoot:ItemOnEnter(data)
+    self = AtlasLoot
+    GameTooltip:ClearLines()
+    local spellID = data.spellID
+    local itemID = data.itemID
+    if itemID or spellID then
+        if not spellID then
+            --Default game tooltips
+            if itemID then
+                if self.ItemUtil:GetItemName(itemID) then
+                    GameTooltip:SetOwner(data, "ANCHOR_RIGHT", -(data:GetWidth() / 2), 24)
+                    GameTooltip:SetHyperlink("item:"..itemID..":0:0:0")
+                    setQuestTooltip(self,data)
+                    setExtraTooltip(self,data)
+                    setDroprateTooltip(self,data)
+                    setCraftingTooltip(self,data)
+                    GameTooltip:Show()
+                    if self.selectedProfile.EquipCompare or IsShiftKeyDown() then
+                        GameTooltip_ShowCompareItem()
+                    end
+                end
+            end
+        else
+            local link = self:GetEnchantLink(spellID)
+            if link then
+                GameTooltip:SetOwner(data, "ANCHOR_RIGHT", -(data:GetWidth() / 2), 24)
+                GameTooltip:ClearLines()
+                GameTooltip:SetHyperlink(link)
+            end
+
+            setCraftingTooltip(self,data)
+
+            local showOwn
+            --adds tooltip showing if you know a recipe and it is one of your chars trade skills
+            if data.hasTrade then
+                if CA_IsSpellKnown(spellID) then
+                    showOwn = "|cff1EFF00You know this Recipe"
+                else
+                    showOwn = " |cffFF3F40You don't know this Recipe"
+                end
+            end
+            --gets a list of characters with this recipe known
+            local text = self:GetKnownRecipes(spellID)
+            local hasSpace
+            if (text or showOwn) and not hasSpace then
+                GameTooltip:AddLine(" ")
+                hasSpace = true
+            end
+            if showOwn then GameTooltip:AddLine(showOwn) end
+            if text then
+                text = self.Colors.BLUE.."Recipe known by: "..self.Colors.WHITE..text
+                GameTooltip:AddLine(text)
+            end
+            GameTooltip:Show()
+            if self.selectedProfile.EquipCompare or IsShiftKeyDown() then
+                GameTooltip_ShowCompareItem()
+            end
+        end
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Item OnLeave
+-- Called when the mouse cursor leaves a loot item
+--------------------------------------------------------------------------------
+function AtlasLoot:ItemOnLeave(frame)
+    self = AtlasLoot
+    --Hide the necessary tooltips
+    if( self.selectedProfile.LootlinkTT ) then
+        GameTooltip:Hide()
+    elseif( self.selectedProfile.ItemSyncTT ) then
+        if(GameTooltip:IsVisible()) then
+            GameTooltip:Hide()
+        end
+    else
+		GameTooltip:Hide()
+    end
+    if ( ShoppingTooltip2:IsVisible() or ShoppingTooltip1.IsVisible) then
+       ShoppingTooltip2:Hide()
+       ShoppingTooltip1:Hide()
+    end
+    if self.ui.itemPopupframe and self.ui.itemPopupframe:IsVisible() then self.ui.itemPopupframe:Hide() end
+end
+
+--------------------------------------------------------------------------------
+-- Item OnClick
+-- Called when a loot item is clicked on
+--------------------------------------------------------------------------------
+function AtlasLoot:ItemOnClick(item, button)
+    self = AtlasLoot
+    self.Dewdrop:Close()
+    local spellID = item.spellID
+    local itemID = item.itemID
+    local isItem = not spellID and itemID
+    local itemData = self.ItemUtil:GetItemInfo(itemID)
+    local link = itemData and itemData.link
+
+    if IsShiftKeyDown() then
+        if not isItem then
+            ChatEdit_InsertLink(self:GetEnchantLink(spellID))
+            return
+        elseif itemData and ChatFrame1EditBox and ChatFrame1EditBox:IsVisible() then
+            ChatFrame1EditBox:Insert(itemData.name)  -- <-- this line just inserts plain text, does not need any adjustment
+            return
+        elseif link then
+            ChatEdit_InsertLink(link)
+            return
+        end
+    end
+
+    if IsAltKeyDown() then
+        if button == "RightButton" and itemID and self.itemframe.refresh[2] ~= "currentWishList" then
+            local wList = AtlasLootWishList.Options[playerName].DefaultWishList
+            self:AddItemToWishList(wList[1], wList[3], item)
+            return
+        elseif self.itemframe.refresh[2] == "currentWishList" then
+            self:DeleteFromWishList(item.item)
+            return
+        end
+    end
+
+    if IsControlKeyDown() then
+        if link then
+            --view item in dressing room
+            DressUpItemLink(link)
+            return
+        end
+    end
+
+    if button == "RightButton" then
+        if not isItem then
+            self:ItemContextMenu(item, "spell")
+            return
+        elseif self.wishListLockState == "Unlocked" then
+            self:MoveWishlistItem("Down", item.item.positionNumber)
+            return
+        elseif isItem then
+            self:ItemContextMenu(item, "item")
+            return
+        end
+    end
+
+    if button == "LeftButton" then
+        if self.wishListLockState == "Unlocked" then
+            self:MoveWishlistItem("Up", item.item.positionNumber)
+            return
+        elseif item.contentsPreview then
+            self:PopoupItemFrame(item, item.contentsPreview )
+            return
+        elseif item.sourcePage and item.sourcePage[2] == "Source" then
+            local dataID, dataSource, dataPage = unpack(item.sourcePage[1])
+            if dataID and dataID ~= "" and dataSource then
+                self.backEnabled = true
+                self:ShowItemsFrame(dataID, dataSource, dataPage or 1)
+                return
+            end
+        elseif item.sourcePage and item.sourcePage[3] == "Token" then
+            local source = item.sourcePage[1]..item.sourcePage[2]
+            --Create token table if there isnt one
+            if self.data.token[source] == nil then
+                self:CreateToken(item.sourcePage[1], item.sourcePage[2])
+            end
+            --Show token table
+            self:ShowItemsFrame(source, "token", 1)
+                return
+        end
+    end
+
+ 
+end
+
+AtlasLootGlobals.ItemOnEnter = AtlasLoot.ItemOnEnter
+AtlasLootGlobals.ItemOnLeave = AtlasLoot.ItemOnLeave
+AtlasLootGlobals.ItemOnClick = AtlasLoot.ItemOnClick
+
+
+function AtlasLoot:ItemContextMenu(data, Type)
+    local craftingData = data.craftingData
+    local itemID = data.itemID
+    local linkID = itemID
+    local spellID = data.spellID
+
+    if Type == "spell" then
+        linkID = spellID
+    end
+
+    local recipeID = self:GetRecipeID(spellID)
+    local craftedID = self:GetCraftedItemID(spellID)
+    local isAuction = AuctionFrame and AuctionFrame:IsVisible() and true or false
+    local isCrafted = isAuction and craftedID or false
+    local isRecipe = isCrafted and recipeID or false
+
+    local menuList = {
+        {
+                {text = "Links", isTitle = true},
+                {text = self.Colors.ORANGE.."Open AscensionDB To Entry", func = function() self:OpenDBURL(linkID,Type) end},
+                {text = self.Colors.GREEN.."Guild", func = function() self:Chatlink(linkID,"GUILD",Type) end},
+                {text = self.Colors.LIGHTBLUE.."Party", func = function() self:Chatlink(linkID,"PARTY",Type) end},
+                {text = self.Colors.ORANGE2.."Raid", func = function() self:Chatlink(linkID,"RAID",Type) end},
+                {text = "Auction House Search", isTitle = true, showOnCondition = isAuction, divider = true},
+                {text = "Created Item", func = function() self:SearchAuctionHouse(self.ItemUtil:GetItemName(craftedID)) end, showOnCondition = isCrafted},
+                {text = "Recipe", func = function() self:SearchAuctionHouse(self.ItemUtil:GetItemName(recipeID)) end, showOnCondition = isRecipe},
+                {text = "Item", func = function() self:SearchAuctionHouse(self.ItemUtil:GetItemName(itemID)) end, showOnCondition = isAuction},
+        }, {}
+    }
+    local wishList
+    local wayPointList
+    local isWishlist = (self.itemframe.refresh[2] == "currentWishList") or false
+    local notWishlist = notWishlist and nil
+    local wList = AtlasLootWishList.Options[playerName].DefaultWishList
+    local isCollectionItem = itemID and C_VanityCollection.IsCollectionItemOwned(itemID)
+    if not self.ui.itemPopupframe or self.ui.itemPopupframe and not self.ui.itemPopupframe:IsVisible()  then
+        wishList = {
+            {
+                    {text = "Wishlists", isTitle = true, divider = true},
+                    {text = "Add Custom Header/Blank Line", func = function() StaticPopup_Show("ATLASLOOT_ADD_CUSTOMHEADER") StaticPopupDialogs.ATLASLOOT_ADD_CUSTOMHEADER.num = data.item.positionNumber end, showOnCondition = isWishlist},
+                    {text = "Delete", func = function() self:DeleteFromWishList(data.item) end, showOnCondition = isWishlist},
+                    {text = "Add To Default", func = function() self:AddItemToWishList(wList[1], wList[3], data) end, showOnCondition = notWishlist},
+                    {text = "Own Wishlists", value = "OwnWishlists", hasArrow = true, showOnCondition = notWishlist},
+                    {text = "Shared Wishlists", value = "SharedWishlists", hasArrow = true, showOnCondition = notWishlist},
+                    {text = "Add Wishlist", func = function() self:AddWishList() end, showOnCondition = notWishlist},
+                    {text = "Vanity Collection", isTitle = true, showOnCondition = isCollectionItem},
+                    {text = "Learn/Recive Vanity Item", func = function() self:DeliverVanityItem(itemID) end, showOnCondition = isCollectionItem}
+            },{}}
+
+        table.insert(wishList[2], {text = "OwnWishlists", isTitle = true, show = "OwnWishlists"})
+        for i,v in pairs(AtlasLootWishList.Own) do
+            if type(v) == "table" then
+                table.insert(wishList[2],{text = v.Name, func = function() self:AddItemToWishList("Own", i, data) end, show = "OwnWishlists"})
+            end
+        end
+        table.insert(wishList[2], {text = "SharedWishlists", isTitle = true, show = "SharedWishlists"})
+        for i,v in pairs(AtlasLootWishList["Shared"]) do
+            if type(v) == "table" then
+                table.insert(wishList[2],{text = v.Name,func = function() self:AddItemToWishList("Shared", i, data) end, show = "SharedWishlists"})
+            end
+        end
+
+        if data.spellID then
+            if not self.db.profile.waypointList then self.db.profile.waypointList = {} end
+            local wayPoint
+            if (craftingData and self.selectedProfile.recipeExtraInfoSwitch and IsControlKeyDown()) or (craftingData and not self.selectedProfile.recipeExtraInfoSwitch) then
+                GameTooltip:AddLine(" ")
+                for _,v in pairs(craftingData) do
+                    if v.cords and tonumber(v.cords[1]) ~= 0 and tonumber(v.cords[2]) ~= 0 then
+                        local line1 = v[1]
+                        local line2 = v[2]
+                        if v.fac and (v.fac[2] == playerFaction or v.fac[2] == "Netural") then line1 = v.fac[1]..line1 end
+                        if not wayPoint then wayPoint = {} end
+                        table.insert(wayPoint, { line2, tonumber(v.cords[1]), tonumber(v.cords[2]), line1, (v.fac and v.fac[2])})
+                    end
+                end
+            end
+            local isWaypoint = (craftingData and wayPoint) and true or false
+            wayPointList = { [1] = {
+                {text = "Recipe Waypoints", isTitle = true},
+                {text = "Add pin to map",
+                func = function()
+                    for _,v in pairs(wayPoint) do
+                        if not v[5] or (v[5] and (v[5] == playerFaction or v[5] == "Netural")) then
+                            self:AddWayPoint(unpack(v))
+                        end
+                    end
+                end, showOnCondition = isWaypoint},
+                {text = "Add pin to map for every missing recipe", func = function() self:SetRecipeMapPins() end, showOnCondition = isWaypoint},
+            }}
+        end
+    end
+    self:OpenDewdropMenu(data, menuList, wishList, wayPointList)
+end
+

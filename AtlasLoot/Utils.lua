@@ -1,0 +1,490 @@
+local AtlasLoot = LibStub("AceAddon-3.0"):GetAddon("AtlasLoot")
+
+--------------------------------- DewDrop Dropdownmenu ---------------------------------
+-- Used to create a dewdrop menus from tables
+function AtlasLoot:OpenDewdropMenu(frame, menuList, ...)
+	if self.Dewdrop:IsOpen(frame) then self.Dewdrop:Close() return end
+	local textSize = AtlasLoot.selectedProfile.txtSize or 12
+	local menuTables = {...}
+	if #menuTables > 0 then
+		-- if more then 1 table is sent combine them into 1 table
+		for _, v in pairs(menuTables) do
+			for level, list in pairs(v) do
+				for _, entry in pairs(list) do
+					menuList[level] = menuList[level] or {}
+						table.insert(menuList[level], entry)
+				end
+			end
+		end
+	end
+
+	local function addDiviver(maxLenght)
+		local text = self.Colors.WHITE.."----------------------------------------------------------------------------------------------------"
+		self.Dewdrop:AddLine(
+			"text" , text:sub(1, maxLenght),
+			"textHeight", textSize,
+			"textWidth", textSize,
+			"isTitle", true,
+			"notCheckable", true
+		)
+	end
+	self.Dewdrop:Open(frame,
+		"point", function(parent)
+			local point1, _, point2 = self:GetTipAnchor(frame)
+    		return point1, point2
+		end,
+		"children", function(level, value)
+			local textLength = menuList.dividerLength or 35
+			for i, menu in pairs(menuList[level]) do
+				if menu.showOnCondition == nil or menu.showOnCondition == true then
+					if menu.show == nil or menu.show == value or menu.show == true then
+						if menu.divider then
+							addDiviver(textLength)
+						end
+						local checked = menu.checked
+						if menu.checked and type(menu.checked) == "table" then
+							checked = menu.checked[1][menu.checked[2]]
+						elseif menu.checked and type(menu.checked) == "function" then
+							checked = menu:checked()
+						end
+
+						local text = menu.isTitle and self.Colors.YELLOW..menu.text or menu.text
+
+						self.Dewdrop:AddLine(
+							"text", text,
+							"isTitle", menu.isTitle,
+							"value", menu.value,
+							"hasArrow", menu.hasArrow,
+							"closeWhenClicked", not menu.dontCloseWhenClicked,
+							"textHeight", menu.textHeight or textSize,
+							"textWidth", menu.textWidth or textSize,
+							"checked", checked,
+							"notCheckable", (checked == nil and not menu.isRadio),
+							"tooltip", menu.tooltip or menu.text,
+							"secure", menu.secure,
+							"icon", menu.icon,
+							"isRadio", menu.isRadio,
+							"func", menu.func
+						)
+					end
+				end
+				-- create close button
+				if i == #menuList[level] then
+					addDiviver(textLength)
+					self.Dewdrop:AddLine(
+						"text", self.Colors.CYAN.."Close Menu",
+						"textHeight", textSize,
+						"textWidth", textSize,
+						"closeWhenClicked", true,
+						"notCheckable", true
+					)
+				end
+			end
+		end
+	)
+end
+
+-------------------------------------------------------------------------------
+
+-- return a copy of the table table
+function AtlasLoot:CloneTable(table)
+	if type(table) ~= "table" then return end
+	local new = {}	-- create a new table
+	for i, v in pairs(table) do
+		if type(v) == "table" then
+			v = self:CloneTable(v)
+		end
+		new[i] = v
+	end
+	return new
+end
+
+--drop down map menu
+function AtlasLoot:OpenDB(frame, type, text)
+    local menuList = { [1] = {
+        {text = self.Colors.ORANGE.."Open AscensionDB To NPC", func = function() self:OpenDBURL(text , type) end},
+		}
+	}
+    self:OpenDewdropMenu(frame, menuList)
+end
+
+local AtlasLootScanTooltip = CreateFrame("GAMETOOLTIP","AtlasLootScanTooltip",nil,"GameTooltipTemplate")
+AtlasLootScanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+-- Create enchant tooltip
+function AtlasLoot:GetEnchantLink(enchantID)
+	if not enchantID then return end
+	local enchantLink
+	AtlasLootScanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+	AtlasLootScanTooltip:ClearLines()
+	AtlasLootScanTooltip:SetHyperlink("enchant:"..enchantID)
+	AtlasLootScanTooltip:Show()
+	local tooltipline = _G["AtlasLootScanTooltipTextLeft1"]
+	local text = tooltipline:GetText()
+	if text and string.find(text, ":") then
+		enchantLink = "|cffffd000|Henchant:"..enchantID.."|h["..text.."]|h|r"
+	else
+		enchantLink = GetSpellLink(enchantID)
+	end
+	AtlasLootScanTooltip:Hide()
+	return enchantLink
+ end
+
+-- Open a ascension db link
+function AtlasLoot:OpenDBURL(ID, Type)
+    OpenAscensionDBURL("?"..Type.."="..ID)
+end
+
+-- create a enchant or item chat link!
+function AtlasLoot:Chatlink(ID,chatType,Type)
+    if Type == "spell" then
+        SendChatMessage(self:GetEnchantLink(ID) ,chatType)
+    else
+        SendChatMessage(self.ItemUtil:GetItemLink(ID) ,chatType)
+    end
+end
+
+-- Get rep faction for when you have 2 loot tables and want to show a different one depending on rep
+function AtlasLoot:GetReputationFaction(factions)
+	local factionIndex = 1
+	local lastFactionName
+	repeat
+	local name, _, _, _, _, totalRep = GetFactionInfo(factionIndex)
+			for _, faction in pairs(factions) do
+			if name == faction and totalRep and totalRep >= 1 then
+				return faction
+			end
+			if name == faction then
+				lastFactionName = faction
+			end
+		end
+	factionIndex = factionIndex + 1
+	until factionIndex > 200
+	return lastFactionName
+end
+
+--[[
+AtlasLoot:PopoupItemFrame(item, data)
+Used to create a popup item frame for items like gem sacks to show what they contain
+]] 
+function AtlasLoot:PopoupItemFrame(frame, data)
+	if not data then return end
+	self.ui.itemPopupframe:Show()
+	--hide the unused buttons
+	for i = 1, 15 do
+		local button = _G["AtlasLoot_PopupButton_"..i]
+		if button then
+			button:Hide()
+		end
+	end
+	--creates a button only if one dosnt already exist re use old one if it does
+	local function createButton(num)
+		if _G["AtlasLoot_PopupButton_"..num] then return end
+		local button = CreateFrame("Button", "AtlasLoot_PopupButton_"..num, self.ui.itemPopupframe, "ItemButtonTemplate")
+		button:SetID(num)
+		button:SetSize(30,30)
+		button:EnableMouse()
+		button:RegisterForClicks("AnyDown")
+		button:SetScript("OnClick", function(btn, arg1) self:ItemOnClick(btn, arg1) end)
+		button:SetScript("OnEnter", function(btn)
+			self:ItemOnEnter(btn)
+			self.ui.itemPopupframe:Show()
+		end)
+		button:SetScript("OnLeave", function(btn)
+			if not self.Dewdrop:IsOpen(_G["AtlasLoot_PopupButton_"..num]) then
+				self:ItemOnLeave(btn)
+			end
+		end)
+
+		if num == 1 then
+			button:SetPoint("TOPLEFT", self.ui.itemPopupframe, 9, -8)
+		elseif num == 7 then
+			button:SetPoint("BOTTOM", "AtlasLoot_PopupButton_1", 0, -33)
+		elseif num == 13 then
+			button:SetPoint("BOTTOM", "AtlasLoot_PopupButton_6", 0, -33)
+		else
+			button:SetPoint("LEFT", _G["AtlasLoot_PopupButton_"..(num-1)],"RIGHT",3,0)
+		end
+	end
+	if data.Faction then
+		data = data[self:GetReputationFaction(data.Faction)]
+		if not data then return end
+	end
+
+	local numberBtns
+	local craftedItemID = self:GetCraftedItemID(frame.spellID)
+	if craftedItemID then
+		table.insert(data, 1, {ItemID = craftedItemID})
+		local bloodforged = self:GetItemDifficultyID(craftedItemID, 1)
+		local firstBlank = 2
+		if bloodforged and bloodforged ~= craftedItemID then
+			table.insert(data, 2, {ItemID = bloodforged})
+			firstBlank = 3
+		end
+
+		for i = firstBlank, 6 do
+			table.insert(data, i, "blank")
+		end
+	end
+
+	for i, item in ipairs(data) do
+		createButton(i)
+		local button = _G["AtlasLoot_PopupButton_"..i]
+		if item == "blank" then
+			button:Hide()
+		else
+			local correctID = (type(item) == "number" and item) or (type(item) == "table" and (item.ItemID or item.itemID or item[1]))
+			local itemCount = (type(item) == "table" and (item.Count or item[2])) or nil
+			local itemID = self:GetItemDifficultyID(correctID, self.ItemindexID)
+			local itemData = self.ItemUtil:GetItemInfo(itemID)
+			if not itemData then break end
+			SetItemButtonTexture(button, itemData.icon)
+			SetItemButtonQuality(button, itemData.quality)
+
+			button.itemID = itemID
+			button.itemTexture = frame.itemTexture
+			button.isAtlasLoot = true
+			local recipeSpellID = self:GetTradeSkillByRecipeID(itemID)
+			if recipeSpellID then
+				button.craftingData = self:GetRecipeSource(recipeSpellID)
+			end
+			SetItemButtonCount(button, itemCount)
+			button:Show()
+		end
+		numberBtns = i
+	end
+
+	if numberBtns < 6 then
+		self.ui.itemPopupframe:SetWidth((numberBtns*33)+16)
+	else
+		self.ui.itemPopupframe:SetWidth(214)
+	end
+
+	if numberBtns > 6 then
+		self.ui.itemPopupframe:SetHeight(79)
+	elseif numberBtns > 12 then
+		self.ui.itemPopupframe:SetHeight(107)
+	else
+		self.ui.itemPopupframe:SetHeight(46)
+	end
+
+	self.ui.itemPopupframe:SetParent(frame)
+	self.ui.itemPopupframe:ClearAllPoints()
+	self.ui.itemPopupframe:SetPoint("TOPLEFT",frame,0,-25)
+	self.ui.itemPopupframe:Show()
+end
+
+--------- rate limited item frame refresh ---------
+local refreshTimer
+function AtlasLoot:ItemRefreshTimer()
+    self:ShowItemsFrame("refresh")
+    refreshTimer = false
+end
+
+function AtlasLoot:ItemFrameRefresh()
+    if refreshTimer then return end
+    self:ScheduleTimer("ItemRefreshTimer", .5)
+    refreshTimer = true
+end
+-----------------------------------------------------
+
+-- Loading items spinner 
+local loadingCount = 0
+function AtlasLoot:ItemsLoading(count)
+	if count == "reset" then
+		loadingCount = 0
+		count = 0
+	end
+	loadingCount = loadingCount + count
+	if(loadingCount > 0) then
+        AtlasLoot_ItemsLoadingSpinner:SetVertexColor(0,1,0)
+        AtlasLoot_ItemsLoadingFrameBackground:SetVertexColor(0,1,0)
+        AtlasLoot_ItemsLoading.tooltip = self.Colors.WHITE..loadingCount..self.Colors.YELLOW.." Items still caching\n(This can take awhile after a launcher update)"
+		AtlasLoot_ItemsLoading.Loop:Play()
+		AtlasLoot_ItemsLoading:Show()
+		if GameTooltip:GetOwner() == AtlasLoot_ItemsLoading then
+			GameTooltip:SetOwner(AtlasLoot_ItemsLoading, "ANCHOR_LEFT")
+			GameTooltip:SetText(AtlasLoot_ItemsLoading.tooltip, nil, nil, nil, nil, true)
+		end
+	else
+        AtlasLoot_ItemsLoading.Loop:Stop()
+        AtlasLoot_ItemsLoading:Hide()
+	end
+end
+
+local function checkTooltipForDuplicate(tooltip, text)
+    -- Check if we already added to this tooltip.
+    for i = 1, tooltip:NumLines() do
+        local frame = _G[tooltip:GetName() .. "TextLeft" .. i]
+        local textOld
+        if frame then textOld = frame:GetText() end
+        if textOld and textOld == text then return true end
+    end
+end
+
+-- finds and sets the tooltip for the itemID that it is sent
+local function setTooltip(itemID, tooltip)
+    local self = AtlasLoot
+	if not self.selectedProfile.showUnknownRecipeTooltip then return end
+	local text = self:IsRecipeUnknown(itemID)
+	if not text then return end
+	text = "Recipe could be learned by: "..self.Colors.GREEN..text
+	if not checkTooltipForDuplicate(tooltip, text) then
+		tooltip:AddLine(text)
+	end
+end
+
+local function setItemSourceTooltip(itemID, tooltip)
+	local button = GetMouseFocus()
+	local self = AtlasLoot
+	if not self.selectedProfile.showdropLocationTooltips or (button and button.isAtlasLoot) then return end
+	local text = self.ItemUtil:GetItemSource(itemID)
+	if text then
+		tooltip:AddLine(text)
+	end
+end
+
+-- item tooltip handler
+local function TooltipHandlerItem(tooltip)
+    --checks for combat less likely to cause a lag spike
+    if UnitAffectingCombat("player") then return end
+    --get item link and itemID
+	local link = select(2, tooltip:GetItem())
+	if not link then return end
+	local itemID = GetItemInfoFromHyperlink(link)
+	if not itemID then return end
+    setTooltip(itemID, tooltip)
+	setItemSourceTooltip(itemID, tooltip)
+end
+
+GameTooltip:HookScript("OnTooltipSetItem", TooltipHandlerItem)
+ItemRefTooltip:HookScript("OnTooltipSetItem", TooltipHandlerItem)
+
+function AtlasLoot:StripTextColor(txt)
+	txt = txt or ""
+	txt = string.gsub( txt, "|c%x%x%x%x%x%x%x%x", "" )
+	txt = string.gsub( txt, "|c%x%x %x%x%x%x%x", "" ) -- the trading parts colour has a space instead of a zero for some weird reason
+	txt = string.gsub( txt, "|r", "" )
+	return txt
+end
+
+function AtlasLoot:CheckIfEmptyTable(table)
+	if next(table) then
+		return false
+	else
+		return true
+	end
+end
+
+-- handle minimap tooltip
+function AtlasLoot:GetTipAnchor(frame)
+    local x, y = frame:GetCenter()
+    if not x or not y then return "TOPLEFT", "BOTTOMLEFT" end
+    local hhalf = (x > UIParent:GetWidth() * 2 / 3) and "RIGHT" or (x < UIParent:GetWidth() / 3) and "LEFT" or ""
+    local vhalf = (y > UIParent:GetHeight() / 2) and "TOP" or "BOTTOM"
+    return vhalf .. hhalf, frame, (vhalf == "TOP" and "BOTTOM" or "TOP") .. hhalf
+end
+
+-- Search Auction House for crafting patern/enchant
+function AtlasLoot:SearchAuctionHouse(text)
+	if not text then return end
+	if BrowseName:IsVisible() then
+		BrowseName:SetText(text)
+		BrowseSearchButton:Click()
+	elseif Atr_Search_Box:IsVisible() then
+		Atr_Search_Box:SetText(text)
+		Atr_Search_Button:Click()
+	end
+
+end
+
+function AtlasLoot:SetMerchantFrameGlow()
+	if not self.selectedProfile.MerchantGlow then return end
+	local num = 1
+	while _G["MerchantItem"..num.."ItemButton"] do
+		local link = _G["MerchantItem"..num.."ItemButton"].link
+		if not link then return end
+		local itemID = GetItemInfoFromHyperlink(link)
+		if self:WishListCheck(itemID, true) then
+			ActionButton_ShowOverlayGlow(_G["MerchantItem"..num.."ItemButton"])
+		else
+			ActionButton_HideOverlayGlow(_G["MerchantItem"..num.."ItemButton"])
+		end
+		num = num + 1
+	end
+end
+
+function AtlasLoot:InitializeWishlistMerchantGlow()
+	if self.selectedProfile.MerchantGlow then
+		self:RegisterEvent("MERCHANT_UPDATE")
+		self:RegisterEvent("MERCHANT_SHOW")
+		MerchantNextPageButton:HookScript("OnClick", function() AtlasLoot:SetMerchantFrameGlow() end)
+		MerchantPrevPageButton:HookScript("OnClick", function() AtlasLoot:SetMerchantFrameGlow() end)
+	end
+end
+
+--========================================
+-- Retrieve additional item info via the
+-- item's tooltip
+--========================================
+local cTip = CreateFrame("GameTooltip","cTooltip",nil,"GameTooltipTemplate")
+function AtlasLoot:GetTooltipItemInfo(link, bag, slot)
+    cTip:SetOwner(UIParent, "ANCHOR_NONE")
+
+    -- set up return values
+    local binds = {}
+
+    -- generate item tooltip in hidden tooltip object
+    if link then
+        cTip:SetHyperlink(link)
+    elseif bag and slot then
+        cTip:SetBagItem(bag, slot)
+    else
+        return
+    end
+
+    for i = 1,cTip:NumLines() do
+        local text = _G["cTooltipTextLeft"..i]:GetText()
+        if text == "Realm Bound" then binds.isRealmbound = true end
+        if text == ITEM_SOULBOUND then  binds.isSoulbound = true end
+        if text == ITEM_BIND_ON_PICKUP then binds.isBoP = true end
+        if text == ITEM_SPELL_KNOWN then binds.isKnown = true end
+    end
+
+    cTip:Hide()
+
+    return binds
+end
+
+function AtlasLoot:SetGameTooltip(button, text, bottom)
+	local anchor = bottom or "ANCHOR_TOPLEFT"
+	GameTooltip:ClearLines()
+	GameTooltip:SetOwner(button, anchor)
+	if type(text) == "table" then
+		for _, textLine in pairs(text) do
+			GameTooltip:AddLine(textLine)
+		end
+	else
+		GameTooltip:AddLine(text)
+	end
+	GameTooltip:Show()
+end
+
+function AtlasLoot:RateLimitLoadTable(taskData, taskFunction)
+	-- rate limit tied to half the current frame rate
+	local maxDuration = ((self.selectedProfile and self.selectedProfile.ItemLoadingSpeed or 1)*500)/GetFramerate()
+	local startTime = debugprofilestop()
+	local function continue()
+		startTime = debugprofilestop()
+		local task = table.remove(taskData)
+		while (task) do
+			taskFunction(task)
+			if (debugprofilestop() - startTime > maxDuration) then
+				Timer.After(0, continue)
+				return
+			end
+			task = table.remove(taskData)
+		end
+	end
+
+	return continue()
+end
