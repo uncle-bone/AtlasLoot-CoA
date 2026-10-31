@@ -1,6 +1,6 @@
 # AtlasLoot-CoA v8.1.6 — Full Phase 1 & 2 BiS Database
 
-> **[⬇ Download v8.1.6](https://github.com/downingwow/AtlasLoot-CoA/releases/download/v8.1.6/AtlasLoot-CoA-v8.1.6.zip)**
+> **[⬇ Download v8.1.6](https://github.com/uncle-bone/AtlasLoot-CoA/releases/download/v8.1.6/AtlasLoot-CoA-v8.1.6.zip)**
 
 
 Loot browsing for Ascension Conquest of Azeroth / Conquest Reborn on the WoW 3.3.5a-based client. Retains the supplied Ascension loot tables, item browsing, cache and wishlist settings, and adds the CoA BiS interface framework.
@@ -18,5 +18,5 @@ Back up existing addon files and WTF/SavedVariables. Extract both addon folders 
 
 The earlier bugfix baseline was reported to load without errors; the new BiS framework still needs in-game validation and populated, verified lists.
 
-Maintainer: Uncle Bone — https://github.com/downingwow/AtlasLoot-CoA
+Maintainer: Uncle Bone — https://github.com/uncle-bone/AtlasLoot-CoA
 Original contributors include Hegarol, Skray, Szyler, Anch, Rvng and others credited in the source. GPL v2 and other supplied third-party notices remain applicable.
