@@ -1,4 +1,4 @@
-# AtlasLoot-CoA v8.1.1 — BiS browser framework
+# AtlasLoot-CoA v8.1.6 — Full Phase 1 & 2 BiS Database
 
 > **[⬇ Download v8.1.6](https://github.com/downingwow/AtlasLoot-CoA/releases/download/v8.1.6/AtlasLoot-CoA-v8.1.6.zip)**
 
