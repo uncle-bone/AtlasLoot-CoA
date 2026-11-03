@@ -1,6 +1,7 @@
 # AtlasLoot-CoA v8.1.6 — Full Phase 1 & 2 BiS Database
 
-> **[Download](https://github.com/uncle-bone/AtlasLoot-CoA/releases/latest)**
+> **[Download Here!](https://coa-research.unclebone.workers.dev/download/AtlasLoot-CoA)**
+**Current stable release: v8.1.6.**
 
 Loot browsing for Ascension Conquest of Azeroth / Conquest Reborn on the WoW 3.3.5a-based client. Retains the supplied Ascension loot tables, item browsing, cache and wishlist settings, and adds the CoA BiS interface framework.
 
